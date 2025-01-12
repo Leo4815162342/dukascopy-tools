@@ -179,7 +179,31 @@ function getSecondOHLCfromTicks(
     3600,
     d => d.getUTCMinutes() * 60 + d.getUTCSeconds()
   );
-  const ohlc = ticksBySecond.map((data, i) =>
+
+  // There can be gaps in the data, so we need to fill them in
+  // filling in gaps when there is no ticks for a particular "second" and get date from previous "second"
+  // if it is not available, then we just leave it empty
+
+  // TODO: consider cases when the first "second" is empty
+
+  const withGapsFilled: number[][][] = [];
+  for (let i = 0; i < ticksBySecond.length; i++) {
+    const data = ticksBySecond[i];
+    const hasGap = data.length === 0;
+    if (hasGap) {
+      const prevData = ticksBySecond[i - 1];
+      const hasPrevData = prevData && prevData.length > 0;
+      if (hasPrevData) {
+        withGapsFilled.push(prevData);
+      } else {
+        withGapsFilled.push([]);
+      }
+    } else {
+      withGapsFilled.push(data);
+    }
+  }
+
+  const ohlc = withGapsFilled.map((data, i) =>
     data.length > 0
       ? ticksToOHLC({ ticks: data, priceType, startTs: startTs + i * 1000, volumes })
       : []
